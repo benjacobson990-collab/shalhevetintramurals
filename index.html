@@ -1881,7 +1881,7 @@ function calcMVPFuturesOdds(){
     }
   });
 
-  return projections.sort((a,b)=>b.projected-a.projected);
+  return projections.filter(p=>p.games>0).sort((a,b)=>b.projected-a.projected);
 }
 
 function renderMVPFutureCard(p, i){
@@ -1941,7 +1941,11 @@ function renderMVPFutures(){
   const settled = activeRound > TOTAL_ROUNDS;
 
   const players = calcMVPFuturesOdds();
-  const leader = players[0];
+
+  if(!players.length){
+    el.innerHTML=`<div class="game-card" style="text-align:center;padding:1.2rem;color:var(--muted);font-family:'Space Mono';font-size:.72rem;">No scores approved yet — market opens after Round 1</div>`;
+    return;
+  }
 
   if(settled){
     // Find actual winner
