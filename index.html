@@ -1884,6 +1884,56 @@ function calcMVPFuturesOdds(){
   return projections.sort((a,b)=>b.projected-a.projected);
 }
 
+function renderMVPFutureCard(p, i){
+  const betId = `mvp_future_${p.name.replace(/\s+/g,'_')}`;
+  const oStr = p.odds>0?`+${p.odds}`:String(p.odds);
+  const oddsColor = p.odds>0?'var(--green)':'var(--red)';
+  const trendIcon = p.trending==='up'?'↑':p.trending==='down'?'↓':'–';
+  const trendColor = p.trending==='up'?'var(--green)':p.trending==='down'?'var(--red)':'var(--muted)';
+  const tierColor = {1:'var(--gold)',2:'var(--accent)',3:'var(--blue)',4:'var(--muted)',5:'var(--muted)'};
+  const tc = tierColor[p.tier]||'var(--muted)';
+  const tierBadge = p.tier<=2
+    ?`<span style="font-size:.5rem;font-family:'Space Mono';color:${tc};margin-left:3px;">${p.tier===1?'⭐T1':'T2'}</span>`:'';
+  const dataStr = p.games>0
+    ?`${p.ppg.toFixed(1)} ppg · ${p.games}gp · proj ${p.projected.toFixed(1)}`
+    :`No data · proj ${p.projected.toFixed(1)} (tier est.)`;
+  const label = `${p.name} — MVP Futures`;
+  const pct = Math.round(p.prob*100);
+  return `<div class="game-card" style="padding:.75rem;margin-bottom:.5rem;cursor:pointer;transition:border-color .15s;"
+    data-bid="${betId}"
+    onclick="addMVPFutureBet('${betId}','${label.replace(/'/g,"\\'")}',${p.odds})"
+    onmouseover="this.style.borderColor='var(--gold)'"
+    onmouseout="this.style.borderColor='var(--border)'">
+    <div style="display:flex;align-items:center;gap:10px;">
+      <div style="font-family:'Bebas Neue';font-size:1.1rem;color:var(--muted);width:22px;text-align:center;">${i+1}</div>
+      <div style="flex:1;min-width:0;">
+        <div style="font-weight:600;font-size:.85rem;">${p.name}${tierBadge}
+          <span style="color:${trendColor};font-size:.75rem;margin-left:4px;">${trendIcon}</span>
+        </div>
+        <div style="font-size:.65rem;color:var(--muted);font-family:'Space Mono';margin-top:1px;">${dataStr}</div>
+      </div>
+      <div style="text-align:right;flex-shrink:0;">
+        <div style="font-family:'Space Mono';font-size:1rem;font-weight:700;color:${oddsColor};">${oStr}</div>
+        <div style="font-size:.58rem;color:var(--muted);font-family:'Space Mono';">${pct}% implied</div>
+      </div>
+    </div>
+    <div style="margin-top:6px;height:3px;background:var(--border);border-radius:2px;overflow:hidden;">
+      <div style="height:100%;width:${pct}%;background:${oddsColor};border-radius:2px;transition:width .4s;"></div>
+    </div>
+  </div>`;
+}
+
+function toggleMVPFuturesRest(){
+  const rest=document.getElementById('mvp-futures-rest');
+  const btn=document.getElementById('mvp-futures-toggle');
+  if(!rest||!btn) return;
+  const open=rest.style.display==='none';
+  rest.style.display=open?'block':'none';
+  const count=rest.querySelectorAll('.game-card').length;
+  btn.innerHTML=open?`▲ Show less`:`▼ Show ${count} more players`;
+}
+
+
 function renderMVPFutures(){
   const el = document.getElementById('mvp-futures-container'); if(!el) return;
 
@@ -1905,6 +1955,11 @@ function renderMVPFutures(){
     return;
   }
 
+  const restHtml = players.length>5
+    ? `<div id="mvp-futures-rest" style="display:none;">${players.slice(5).map((p,i)=>renderMVPFutureCard(p,i+5)).join('')}</div>`
+      +`<div onclick="toggleMVPFuturesRest()" id="mvp-futures-toggle" style="text-align:center;padding:8px;cursor:pointer;font-family:'Space Mono';font-size:.7rem;color:var(--muted);border:1px solid var(--border);border-radius:8px;margin-bottom:.5rem;transition:color .15s;" onmouseover="this.style.color='var(--gold)'" onmouseout="this.style.color='var(--muted)'">▼ Show ${players.length-5} more players</div>`
+    : '';
+
   el.innerHTML = `
   <div class="game-card" style="padding:.9rem;margin-bottom:.5rem;background:rgba(240,180,41,.04);border-color:rgba(240,180,41,.2);">
     <div style="font-size:.72rem;color:var(--muted);font-family:'Space Mono';line-height:1.6;">
@@ -1912,46 +1967,9 @@ function renderMVPFutures(){
     </div>
   </div>
   <div id="mvp-futures-list">
-    ${players.map((p,i)=>{
-      const betId = `mvp_future_${p.name.replace(/\s+/g,'_')}`;
-      const oddsStr = p.odds>0?`+${p.odds}`:String(p.odds);
-      const oddsColor = p.odds>0?'var(--green)':'var(--red)';
-      const trendIcon = p.trending==='up'?'↑':p.trending==='down'?'↓':'–';
-      const trendColor = p.trending==='up'?'var(--green)':p.trending==='down'?'var(--red)':'var(--muted)';
-      const tierColor = {1:'var(--gold)',2:'var(--accent)',3:'var(--blue)',4:'var(--muted)',5:'var(--muted)'};
-      const tc = tierColor[p.tier]||'var(--muted)';
-      const tierBadge = p.tier<=2
-        ?`<span style="font-size:.5rem;font-family:'Space Mono';color:${tc};margin-left:3px;">${p.tier===1?'⭐T1':'T2'}</span>`:'';
-      const dataStr = p.games>0
-        ?`${p.ppg.toFixed(1)} ppg · ${p.games}gp · proj ${p.projected.toFixed(1)}`
-        :`No data · proj ${p.projected.toFixed(1)} (tier est.)`;
-      const label = `${p.name} — MVP Futures`;
-      const pct = Math.round(p.prob*100);
-      return `
-      <div class="game-card" style="padding:.75rem;margin-bottom:.5rem;cursor:pointer;transition:border-color .15s;"
-        data-bid="${betId}"
-        onclick="addMVPFutureBet('${betId}','${label.replace(/'/g,"\\'")}',${p.odds})"
-        onmouseover="this.style.borderColor='var(--gold)'"
-        onmouseout="this.style.borderColor=document.querySelector('[data-bid=${betId}].selected')?'var(--gold)':'var(--border)'">
-        <div style="display:flex;align-items:center;gap:10px;">
-          <div style="font-family:'Bebas Neue';font-size:1.1rem;color:var(--muted);width:22px;text-align:center;">${i+1}</div>
-          <div style="flex:1;min-width:0;">
-            <div style="font-weight:600;font-size:.85rem;">${p.name}${tierBadge}
-              <span style="color:${trendColor};font-size:.75rem;margin-left:4px;">${trendIcon}</span>
-            </div>
-            <div style="font-size:.65rem;color:var(--muted);font-family:'Space Mono';margin-top:1px;">${dataStr}</div>
-          </div>
-          <div style="text-align:right;flex-shrink:0;">
-            <div style="font-family:'Space Mono';font-size:1rem;font-weight:700;color:${oddsColor};">${oddsStr}</div>
-            <div style="font-size:.58rem;color:var(--muted);font-family:'Space Mono';">${pct}% implied</div>
-          </div>
-        </div>
-        <div style="margin-top:6px;height:3px;background:var(--border);border-radius:2px;overflow:hidden;">
-          <div style="height:100%;width:${pct}%;background:${oddsColor};border-radius:2px;transition:width .4s;"></div>
-        </div>
-      </div>`;
-    }).join('')}
-  </div>`;
+    ${players.slice(0,5).map((p,i)=>renderMVPFutureCard(p,i)).join('')}
+  </div>
+  ${restHtml}`;
 
   // Restore selected state
   betSlip.forEach(b=>{
