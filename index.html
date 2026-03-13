@@ -380,7 +380,7 @@ main{position:relative;z-index:1;max-width:1440px;margin:0 auto;padding:1.5rem;d
     <div id="mvp-futures-container" style="margin-bottom:1.5rem;"></div>
     <!-- Regular props -->
     <div style="font-family:'Bebas Neue';font-size:1.1rem;letter-spacing:2px;margin-bottom:.6rem;display:flex;align-items:center;gap:8px;">
-      📊 Game Props <span class="tag blue">ROUND ${activeRound||1}</span>
+      📊 Game Props <span class="tag blue" id="props-round-label">ROUND 1</span>
     </div>
     <div id="props-container"></div>
   </div>
@@ -949,7 +949,7 @@ function addToBetSlip(id, label, odds, oppLabel, oppOdds) {
     betSlip=betSlip.filter(b=>b.id!==id);
     document.querySelectorAll(`[data-bid="${id}"]`).forEach(el=>el.classList.remove('selected'));
   } else {
-    betSlip.push({id,label,odds,oppLabel:oppLabel||'Opposite side',oppOdds:oppOdds||odds});
+    betSlip.push({id,label,odds,oppLabel:oppLabel||'Opposite side',oppOdds:oppOdds||odds,round:currentRound});
     document.querySelectorAll(`[data-bid="${id}"]`).forEach(el=>el.classList.add('selected'));
     expandSlip();
   }
@@ -1195,6 +1195,8 @@ function getApprovedPlayerPts(playerName, round){
 
 function renderProps(){
   renderMVPFutures();
+  const rl=document.getElementById('props-round-label');
+  if(rl) rl.textContent=`ROUND ${currentRound}`;
   const safe=s=>s.replace(/'/g,"\\'");
   const opponentMap={};
   const rd=SCHEDULE[currentRound-1];
@@ -2305,9 +2307,10 @@ function settleLeg(leg, round){
   const propMatch=label.match(/^([OU])([\d.]+) Pts — (.+)$/);
   if(propMatch){
     const dir=propMatch[1], line=parseFloat(propMatch[2]), playerName=propMatch[3].trim();
-    // Find which round this player's score was approved
-    const sub=submissions.find(s=>s.type==='player'&&s.player===playerName&&s.status==='approved');
-    if(!sub) return null; // not settled yet
+    // Find the approved score for the round this bet was placed on
+    const betRound = leg.round || round;
+    const sub=submissions.find(s=>s.type==='player'&&s.player===playerName&&s.status==='approved'&&s.round===betRound);
+    if(!sub) return null; // not settled yet — round not approved
     const actual=sub.pts;
     if(dir==='O') return actual>line?'won':'lost';
     else          return actual<line?'won':actual===line?'push':'lost';
@@ -2385,7 +2388,7 @@ async function settleBets(){
   for(const bet of myBets){
     if(bet.status!=='pending') continue;
 
-    const legResults=bet.legs.map(leg=>settleLeg(leg, activeRound));
+    const legResults=bet.legs.map(leg=>settleLeg(leg, leg.round||bet.round||activeRound));
 
     // If any leg lost → entire parlay is lost
     if(legResults.some(r=>r==='lost')){
