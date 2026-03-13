@@ -701,6 +701,25 @@ TEAMS.flatMap(t=>t.players).forEach(p=>{
   if(!PLAYER_TIER[p]){ PLAYER_TIER[p]=5; PLAYER_RANK[p]=0; }
 });
 
+function recomputeTiers(){
+  // Rank all players by MVP score (uses approved submissions)
+  // Players with no data stay at their current tier
+  const scored = ALL_PLAYERS.map(p=>{
+    const res = calcMVPScore(p.name, p.team);
+    return {name: p.name, score: res ? res.score : null};
+  });
+  const withData = scored.filter(p=>p.score!==null).sort((a,b)=>b.score-a.score);
+  if(!withData.length) return; // no data yet, keep existing tiers
+  // Assign tiers: 1-3 → T1, 4-7 → T2, 8-12 → T3, 13-16 → T4, rest → T5
+  withData.forEach((p,i)=>{
+    const rank = i+1;
+    const tier = rank<=3?1:rank<=7?2:rank<=12?3:rank<=16?4:5;
+    PLAYER_TIER[p.name] = tier;
+    PLAYER_RANK[p.name] = rank;
+  });
+}
+
+
 let ALL_PLAYERS = TEAMS.flatMap(t => t.players.map(p => ({name:p, team:t.name})));
 
 const TEAM_TIER_COUNT = {};
@@ -930,6 +949,7 @@ async function loginSuccess(email){
     renderAdminPending(); renderKickTimeEditor();
   }
   populateResultsForm();
+  recomputeTiers();
   await settleBets();
 }
 
@@ -1589,6 +1609,7 @@ async function approveSubmission(id){
     renderGames(); renderStandings();
   }
   await dbUpdateSubmission(id,s); renderAdminPending(); renderMySubmissions();
+  recomputeTiers();
   await settleBets();
   showToast('Submission approved!');
 }
